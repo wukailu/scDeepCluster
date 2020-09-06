@@ -24,12 +24,15 @@ from preprocess import read_dataset, normalize
 import tensorflow as tf
 
 from numpy.random import seed
+
 seed(2211)
 from tensorflow import set_random_seed
+
 set_random_seed(2211)
 
 MeanAct = lambda x: tf.clip_by_value(K.exp(x), 1e-5, 1e6)
 DispAct = lambda x: tf.clip_by_value(tf.nn.softplus(x), 1e-4, 1e4)
+
 
 def cluster_acc(y_true, y_pred):
     """
@@ -51,7 +54,7 @@ def cluster_acc(y_true, y_pred):
     return sum([w[i, j] for i, j in ind]) * 1.0 / y_pred.size
 
 
-def autoencoder(dims, noise_sd=0, init='glorot_uniform', act='relu'):
+def autoencoder(dims, noise_sd=0.0, init='glorot_uniform', act='relu'):
     """
     Fully connected auto-encoder model, symmetric.
     Arguments:
@@ -67,21 +70,23 @@ def autoencoder(dims, noise_sd=0, init='glorot_uniform', act='relu'):
     x = Input(shape=(dims[0],), name='counts')
     h = x
     h = GaussianNoise(noise_sd, name='input_noise')(h)
- 
+
     # internal layers in encoder
-    for i in range(n_stacks-1):
+    # TODO: Change to dense fc layer
+    for i in range(n_stacks - 1):
         h = Dense(dims[i + 1], kernel_initializer=init, name='encoder_%d' % i)(h)
-        h = GaussianNoise(noise_sd, name='noise_%d' % i)(h)    # add Gaussian noise
+        h = GaussianNoise(noise_sd, name='noise_%d' % i)(h)  # add Gaussian noise
         h = Activation(act)(h)
     # hidden layer
-    h = Dense(dims[-1], kernel_initializer=init, name='encoder_hidden')(h)  # hidden layer, features are extracted from here
+    h = Dense(dims[-1], kernel_initializer=init, name='encoder_hidden')(
+        h)  # hidden layer, features are extracted from here
 
     # internal layers in decoder
-    for i in range(n_stacks-1, 0, -1):
+    for i in range(n_stacks - 1, 0, -1):
         h = Dense(dims[i], activation=act, kernel_initializer=init, name='decoder_%d' % i)(h)
 
     # output
- 
+
     pi = Dense(dims[0], activation='sigmoid', kernel_initializer=init, name='pi')(h)
 
     disp = Dense(dims[0], activation=DispAct, kernel_initializer=init, name='dispersion')(h)
@@ -125,7 +130,8 @@ class ClusteringLayer(Layer):
         assert len(input_shape) == 2
         input_dim = input_shape[1]
         self.input_spec = InputSpec(dtype=K.floatx(), shape=(None, input_dim))
-        self.clusters = self.add_weight(shape=(self.n_clusters, input_dim), initializer='glorot_uniform', name='clusters')
+        self.clusters = self.add_weight(shape=(self.n_clusters, input_dim), initializer='glorot_uniform',
+                                        name='clusters')
         if self.initial_weights is not None:
             self.set_weights(self.initial_weights)
             del self.initial_weights
@@ -154,12 +160,11 @@ class ClusteringLayer(Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
-
 class SCDeepCluster(object):
     def __init__(self,
                  dims,
                  n_clusters=10,
-                 noise_sd=0,
+                 noise_sd=0.0,
                  alpha=1.0,
                  ridge=0,
                  debug=False):
@@ -176,16 +181,16 @@ class SCDeepCluster(object):
         self.act = 'relu'
         self.ridge = ridge
         self.debug = debug
-        self.autoencoder = autoencoder(self.dims, noise_sd=self.noise_sd, act = self.act)
-        
+        self.autoencoder = autoencoder(self.dims, noise_sd=self.noise_sd, act=self.act)
+
         # prepare clean encode model without Gaussian noise
         ae_layers = [l for l in self.autoencoder.layers]
         hidden = self.autoencoder.input[0]
         for i in range(1, len(ae_layers)):
             if "noise" in ae_layers[i].name:
-                next
+                continue
             elif "dropout" in ae_layers[i].name:
-                next
+                continue
             else:
                 hidden = ae_layers[i](hidden)
             if "encoder_hidden" in ae_layers[i].name:  # only get encoder layers
@@ -204,9 +209,9 @@ class SCDeepCluster(object):
 
         self.pretrained = False
         self.centers = []
-        self.y_pred = []
+        self.y_pred = None
 
-    def pretrain(self, x, y, batch_size=256, epochs=200, optimizer='adam', ae_file='ae_weights.h5'):
+    def pretrain(self, x, y, batch_size=256, epochs=200, optimizer=None, ae_file='ae_weights.h5'):
         print('...Pretraining autoencoder...')
         self.autoencoder.compile(loss=self.loss, optimizer=optimizer)
         es = EarlyStopping(monitor="loss", patience=50, verbose=1)
@@ -231,7 +236,7 @@ class SCDeepCluster(object):
         return (weight.T / weight.sum(1)).T
 
     def fit(self, x_counts, sf, y, raw_counts, batch_size=256, maxiter=2e4, tol=1e-3, update_interval=140,
-            ae_weights=None, save_dir='./results/scDeepCluster', loss_weights=[1,1], optimizer='adadelta'):
+            ae_weights=None, save_dir='./results/scDeepCluster', loss_weights=(1, 1), optimizer='adadelta'):
 
         self.model.compile(loss=['kld', self.loss], loss_weights=loss_weights, optimizer=optimizer)
 
@@ -298,7 +303,7 @@ class SCDeepCluster(object):
                                                  y=[p[index * batch_size::], raw_counts[index * batch_size::]])
                 index = 0
             else:
-                loss = self.model.train_on_batch(x=[x_counts[index * batch_size:(index + 1) * batch_size], 
+                loss = self.model.train_on_batch(x=[x_counts[index * batch_size:(index + 1) * batch_size],
                                                     sf[index * batch_size:(index + 1) * batch_size]],
                                                  y=[p[index * batch_size:(index + 1) * batch_size],
                                                     raw_counts[index * batch_size:(index + 1) * batch_size]])
@@ -316,7 +321,7 @@ class SCDeepCluster(object):
         logfile.close()
         print('saving model to: ' + save_dir + '/scDeepCluster_model_final.h5')
         self.model.save_weights(save_dir + '/scDeepCluster_model_final.h5')
-        
+
         return self.y_pred
 
 
@@ -324,6 +329,7 @@ if __name__ == "__main__":
 
     # setting the hyper parameters
     import argparse
+
     parser = argparse.ArgumentParser(description='train',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--n_clusters', default=10, type=int)
@@ -338,6 +344,7 @@ if __name__ == "__main__":
     parser.add_argument('--ae_weights', default=None)
     parser.add_argument('--save_dir', default='results/scDeepCluster')
     parser.add_argument('--ae_weight_file', default='ae_weights.h5')
+    parser.add_argument('--noise_sd', default=2.5, type=float)
 
     args = parser.parse_args()
 
@@ -354,9 +361,9 @@ if __name__ == "__main__":
     adata.obs['Group'] = y
 
     adata = read_dataset(adata,
-                     transpose=False,
-                     test_split=False,
-                     copy=True)
+                         transpose=False,
+                         test_split=False,
+                         copy=True)
 
     adata = normalize(adata,
                       size_factors=True,
@@ -372,14 +379,12 @@ if __name__ == "__main__":
     x_sd_median = np.median(x_sd)
     print("median of gene sd: %.5f" % x_sd_median)
 
-
     if args.update_interval == 0:  # one epoch
-        args.update_interval = int(adata.X.shape[0]/args.batch_size)
+        args.update_interval = int(adata.X.shape[0] / args.batch_size)
     print(args)
 
-
     # Define scDeepCluster model
-    scDeepCluster = SCDeepCluster(dims=[input_size, 256, 64, 32], n_clusters=args.n_clusters, noise_sd=2.5)
+    scDeepCluster = SCDeepCluster(dims=[input_size, 256, 64, 8], n_clusters=args.n_clusters, noise_sd=args.noise_sd)
     plot_model(scDeepCluster.model, to_file='scDeepCluster_model.png', show_shapes=True)
     print("autocoder summary")
     scDeepCluster.autoencoder.summary()
@@ -390,12 +395,15 @@ if __name__ == "__main__":
 
     # Pretrain autoencoders before clustering
     if args.ae_weights is None:
-        scDeepCluster.pretrain(x=[adata.X, adata.obs.size_factors], y=adata.raw.X, batch_size=args.batch_size, epochs=args.pretrain_epochs, optimizer=optimizer1, ae_file=args.ae_weight_file)
+        scDeepCluster.pretrain(x=[adata.X, adata.obs.size_factors], y=adata.raw.X, batch_size=args.batch_size,
+                               epochs=args.pretrain_epochs, optimizer=optimizer1, ae_file=args.ae_weight_file)
 
     # begin clustering, time not include pretraining part.
 
-    scDeepCluster.fit(x_counts=adata.X, sf=adata.obs.size_factors, y=y, raw_counts=adata.raw.X, batch_size=args.batch_size, tol=args.tol, maxiter=args.maxiter,
-             update_interval=args.update_interval, ae_weights=args.ae_weights, save_dir=args.save_dir, loss_weights=[args.gamma, 1], optimizer=optimizer2)
+    scDeepCluster.fit(x_counts=adata.X, sf=adata.obs.size_factors, y=y, raw_counts=adata.raw.X,
+                      batch_size=args.batch_size, tol=args.tol, maxiter=args.maxiter,
+                      update_interval=args.update_interval, ae_weights=args.ae_weights, save_dir=args.save_dir,
+                      loss_weights=[args.gamma, 1], optimizer=optimizer2)
 
     # Show the final results
     y_pred = scDeepCluster.y_pred

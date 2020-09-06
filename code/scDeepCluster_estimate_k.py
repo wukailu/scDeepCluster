@@ -22,12 +22,15 @@ from preprocess import read_dataset, normalize
 import tensorflow as tf
 
 from numpy.random import seed
+
 seed(2211)
 from tensorflow import set_random_seed
+
 set_random_seed(2211)
 
 MeanAct = lambda x: tf.clip_by_value(K.exp(x), 1e-5, 1e6)
 DispAct = lambda x: tf.clip_by_value(tf.nn.softplus(x), 1e-4, 1e4)
+
 
 def cluster_acc(y_true, y_pred):
     """
@@ -67,16 +70,17 @@ def autoencoder(dims, noise_sd=2.5, init='glorot_uniform', act='relu'):
     h = GaussianNoise(noise_sd, name='input_noise')(h)
 
     # internal layers in encoder
-    for i in range(n_stacks-1):
+    for i in range(n_stacks - 1):
         h = Dense(dims[i + 1], kernel_initializer=init, name='encoder_%d' % i)(h)
         h = GaussianNoise(noise_sd, name='noise_%d' % i)(h)
         h = Activation(act)(h)
 
     # hidden layer
-    h = Dense(dims[-1], kernel_initializer=init, name='encoder_hidden')(h)  # hidden layer, features are extracted from here
+    h = Dense(dims[-1], kernel_initializer=init, name='encoder_hidden')(
+        h)  # hidden layer, features are extracted from here
 
     # internal layers in decoder
-    for i in range(n_stacks-1, 0, -1):
+    for i in range(n_stacks - 1, 0, -1):
         h = Dense(dims[i], activation=act, kernel_initializer=init, name='decoder_%d' % i)(h)
 
     # output
@@ -124,7 +128,8 @@ class ClusteringLayer(Layer):
         assert len(input_shape) == 2
         input_dim = input_shape[1]
         self.input_spec = InputSpec(dtype=K.floatx(), shape=(None, input_dim))
-        self.clusters = self.add_weight(shape=(self.n_clusters, input_dim), initializer='glorot_uniform', name='clusters')
+        self.clusters = self.add_weight(shape=(self.n_clusters, input_dim), initializer='glorot_uniform',
+                                        name='clusters')
         if self.initial_weights is not None:
             self.set_weights(self.initial_weights)
             del self.initial_weights
@@ -153,7 +158,6 @@ class ClusteringLayer(Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
-
 class DCAC(object):
     def __init__(self,
                  dims,
@@ -175,11 +179,11 @@ class DCAC(object):
         self.act = 'relu'
         self.ridge = ridge
         self.debug = debug
-        self.autoencoder = autoencoder(self.dims, noise_sd=self.noise_sd, act = self.act)
+        self.autoencoder = autoencoder(self.dims, noise_sd=self.noise_sd, act=self.act)
 
         # prepare clean encode model
         ae_layers = [l for l in self.autoencoder.layers]
-#        print(ae_layers)
+        #        print(ae_layers)
         hidden = self.autoencoder.input[0]
         for i in range(1, len(ae_layers)):
             if "noise" in ae_layers[i].name:
@@ -190,7 +194,7 @@ class DCAC(object):
                 hidden = ae_layers[i](hidden)
             if "encoder_hidden" in ae_layers[i].name:  # only get encoder layers
                 break
-#        hidden = self.autoencoder.get_layer(name='encoder_hidden').output
+        #        hidden = self.autoencoder.get_layer(name='encoder_hidden').output
         self.encoder = Model(inputs=self.autoencoder.input[0], outputs=hidden)
 
         pi = self.autoencoder.get_layer(name='pi').output
@@ -226,7 +230,7 @@ class DCAC(object):
         q = self.model.predict(x, verbose=0)
         return q.argmax(1)
 
-    def get_loss(self, x_counts): # evaluate loss
+    def get_loss(self, x_counts):  # evaluate loss
         q = self.model.predict(x_counts)
         p = self.target_distribution(q)
         return self.model.evaluate(x=x_counts, y=p, batch_size=256)
@@ -328,6 +332,7 @@ if __name__ == "__main__":
 
     # setting the hyper parameters
     import argparse
+
     parser = argparse.ArgumentParser(description='train',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--n_clusters', default=10, type=int)
@@ -355,9 +360,9 @@ if __name__ == "__main__":
     adata.obs['Group'] = y
 
     adata = read_dataset(adata,
-                     transpose=False,
-                     test_split=False,
-                     copy=True)
+                         transpose=False,
+                         test_split=False,
+                         copy=True)
 
     adata = normalize(adata,
                       size_factors=True,
@@ -373,11 +378,10 @@ if __name__ == "__main__":
     x_sd_median = np.median(x_sd)
     print("median of gene sd: %.5f" % x_sd_median)
 
-#    args = parser.parse_args()
+    #    args = parser.parse_args()
     if args.update_interval == 0:  # one epoch
-        args.update_interval = int(adata.X.shape[0]/args.batch_size)
+        args.update_interval = int(adata.X.shape[0] / args.batch_size)
     print(args)
-
 
     # Define DCAC model
     dcac = DCAC(dims=[input_size, 256, 64, 32], n_clusters=args.n_clusters, noise_sd=2.5)
@@ -390,25 +394,27 @@ if __name__ == "__main__":
     t0 = time()
     # split training and validating data
     indices = np.random.permutation(adata.X.shape[0])
-    training_idx, validate_idx = indices[:int(0.9*len(indices))], indices[int(0.1*len(indices)):]
-    X_train = adata.X[training_idx,:]
+    training_idx, validate_idx = indices[:int(0.9 * len(indices))], indices[int(0.1 * len(indices)):]
+    X_train = adata.X[training_idx, :]
     size_factors_train = adata.obs.size_factors[training_idx]
     Y_train = y[training_idx]
-    raw_X_train = adata.raw.X[training_idx,:]
+    raw_X_train = adata.raw.X[training_idx, :]
 
-    X_validate = adata.X[validate_idx,:]
+    X_validate = adata.X[validate_idx, :]
     size_factors_validate = adata.obs.size_factors[validate_idx]
     Y_validate = y[validate_idx]
-    raw_X_validate = adata.raw.X[validate_idx,:]
+    raw_X_validate = adata.raw.X[validate_idx, :]
 
     # Pretrain autoencoders before clustering
     if args.ae_weights is None:
-        dcac.pretrain(x=[X_train, size_factors_train], y=raw_X_train, batch_size=args.batch_size, epochs=args.pretrain_epochs, optimizer=optimizer1, ae_file=args.ae_weight_file)
+        dcac.pretrain(x=[X_train, size_factors_train], y=raw_X_train, batch_size=args.batch_size,
+                      epochs=args.pretrain_epochs, optimizer=optimizer1, ae_file=args.ae_weight_file)
 
     # begin clustering, time not include pretraining part.
 
     dcac.fit(x_counts=X_train, y=Y_train, batch_size=args.batch_size, tol=args.tol, maxiter=args.maxiter,
-             update_interval=args.update_interval, ae_weights=args.ae_weights, save_dir=args.save_dir, optimizer=optimizer2)
+             update_interval=args.update_interval, ae_weights=args.ae_weights, save_dir=args.save_dir,
+             optimizer=optimizer2)
 
     # Show the final results
     y_pred = dcac.y_pred
@@ -423,7 +429,7 @@ if __name__ == "__main__":
     validate_loss = dcac.get_loss(x_counts=X_validate)
 
     print('training cluster loss: %.4f, validating cluster loss: %.4f' % (train_loss, validate_loss))
-    G = train_loss/validate_loss
+    G = train_loss / validate_loss
     print('Generalizability: %.4f' % G)
 
     y_validate_pred = dcac.predict_clusters(x=X_validate)
