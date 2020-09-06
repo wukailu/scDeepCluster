@@ -27,6 +27,7 @@ from numpy.random import seed
 
 seed(2211)
 from tensorflow import set_random_seed
+from os.path import join
 
 set_random_seed(2211)
 
@@ -236,7 +237,7 @@ class SCDeepCluster(object):
         return (weight.T / weight.sum(1)).T
 
     def fit(self, x_counts, sf, y, raw_counts, batch_size=256, maxiter=2e4, tol=1e-3, update_interval=140,
-            ae_weights=None, save_dir='./results/scDeepCluster', loss_weights=(1, 1), optimizer='adadelta'):
+            ae_weights=None, save_dir=join(".","results","scDeepCluster"), loss_weights=(1, 1), optimizer='adadelta'):
 
         self.model.compile(loss=['kld', self.loss], loss_weights=loss_weights, optimizer=optimizer)
 
@@ -266,7 +267,7 @@ class SCDeepCluster(object):
         import csv, os
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
-        logfile = open(save_dir + '/scDeepCluster_log.csv', 'w')
+        logfile = open(join(save_dir,'scDeepCluster_log.csv'), 'w')
         logwriter = csv.DictWriter(logfile, fieldnames=['iter', 'acc', 'nmi', 'ari', 'L', 'Lc', 'Lr'])
         logwriter.writeheader()
 
@@ -313,14 +314,14 @@ class SCDeepCluster(object):
             if ite % save_interval == 0:
                 # save scDeepCluster model checkpoints
                 print('saving model to: ' + save_dir + '/scDeepCluster_model_' + str(ite) + '.h5')
-                self.model.save_weights(save_dir + '/scDeepCluster_model_' + str(ite) + '.h5')
+                self.model.save_weights(join(save_dir, 'scDeepCluster_model_' + str(ite) + '.h5'))
 
             ite += 1
 
         # save the trained model
         logfile.close()
         print('saving model to: ' + save_dir + '/scDeepCluster_model_final.h5')
-        self.model.save_weights(save_dir + '/scDeepCluster_model_final.h5')
+        self.model.save_weights(join(save_dir, 'scDeepCluster_model_final.h5'))
 
         return self.y_pred
 
@@ -342,7 +343,7 @@ if __name__ == "__main__":
     parser.add_argument('--update_interval', default=0, type=int)
     parser.add_argument('--tol', default=0.001, type=float)
     parser.add_argument('--ae_weights', default=None)
-    parser.add_argument('--save_dir', default='results/scDeepCluster')
+    parser.add_argument('--save_dir', default=join('results', 'scDeepCluster'))
     parser.add_argument('--ae_weight_file', default='ae_weights.h5')
     parser.add_argument('--noise_sd', default=2.5, type=float)
 
