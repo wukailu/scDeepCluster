@@ -63,7 +63,8 @@ def encoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True
         h = fc(his)
         if noise_sd > 0:
             h = GaussianNoise(noise_sd, name='noise_%d' % i)(h)  # add Gaussian noise
-        h = BatchNormalization()(h)
+        bn = source.get_layer(name=f'bn_{i}') if source else BatchNormalization(name=f'bn_{i}')
+        h = bn(h)
         h = Activation(act)(h)
         if dense:
             his = Concatenate(axis=1)([his, h])
@@ -83,7 +84,8 @@ def decoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True
         fc = source.get_layer(name=f'decoder_{i}') if source else Dense(dims[i], kernel_initializer=init,
                                                                         name=f'decoder_{i}')
         h = fc(his)
-        h = BatchNormalization()(h)
+        bn = source.get_layer(name=f'bn_{i}') if source else BatchNormalization(name=f'bn_{i}')
+        h = bn(h)
         h = Activation(act)(h)
         if dense:
             his = Concatenate(axis=1)([his, h])
