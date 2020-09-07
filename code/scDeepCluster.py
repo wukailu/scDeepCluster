@@ -74,6 +74,22 @@ def autoencoder(dims, noise_sd=0.0, init='glorot_uniform', act='relu'):
 
     # internal layers in encoder
     # TODO: Change to dense fc layer
+    # his = h
+    # for i in range(n_stacks - 1):
+    #     h = Dense(dims[i + 1], kernel_initializer=init, name='encoder_%d' % i)(his)
+    #     h = GaussianNoise(noise_sd, name='noise_%d' % i)(h)  # add Gaussian noise
+    #     h = Activation(act)(h)
+    #     his = K.concatenate([his, h], axis=1)
+    # # hidden layer
+    # # hidden layer, features are extracted from here
+    # h = Dense(dims[-1], kernel_initializer=init, name='encoder_hidden')(his)
+    #
+    # # internal layers in decoder
+    # his = h
+    # for i in range(n_stacks - 1, 0, -1):
+    #     h = Dense(dims[i], activation=act, kernel_initializer=init, name='decoder_%d' % i)(his)
+    #     his = K.concatenate([his, h], axis=1)
+
     for i in range(n_stacks - 1):
         h = Dense(dims[i + 1], kernel_initializer=init, name='encoder_%d' % i)(h)
         h = GaussianNoise(noise_sd, name='noise_%d' % i)(h)  # add Gaussian noise
@@ -237,7 +253,7 @@ class SCDeepCluster(object):
         return (weight.T / weight.sum(1)).T
 
     def fit(self, x_counts, sf, y, raw_counts, batch_size=256, maxiter=2e4, tol=1e-3, update_interval=140,
-            ae_weights=None, save_dir=join(".","results","scDeepCluster"), loss_weights=(1, 1), optimizer='adadelta'):
+            ae_weights=None, save_dir=join(".", "results", "scDeepCluster"), loss_weights=(1, 1), optimizer='adadelta'):
 
         self.model.compile(loss=['kld', self.loss], loss_weights=loss_weights, optimizer=optimizer)
 
@@ -267,7 +283,7 @@ class SCDeepCluster(object):
         import csv, os
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
-        logfile = open(join(save_dir,'scDeepCluster_log.csv'), 'w')
+        logfile = open(join(save_dir, 'scDeepCluster_log.csv'), 'w')
         logwriter = csv.DictWriter(logfile, fieldnames=['iter', 'acc', 'nmi', 'ari', 'L', 'Lc', 'Lr'])
         logwriter.writeheader()
 
@@ -385,7 +401,7 @@ if __name__ == "__main__":
     print(args)
 
     # Define scDeepCluster model
-    scDeepCluster = SCDeepCluster(dims=[input_size, 256, 64, 4], n_clusters=args.n_clusters, noise_sd=args.noise_sd)
+    scDeepCluster = SCDeepCluster(dims=[input_size, 256, 64, 16], n_clusters=args.n_clusters, noise_sd=args.noise_sd)
     # plot_model(scDeepCluster.model, to_file='scDeepCluster_model.png', show_shapes=True)  # issue with graphviz
     print("autocoder summary")
     scDeepCluster.autoencoder.summary()
