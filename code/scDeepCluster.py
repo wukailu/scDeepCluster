@@ -7,7 +7,7 @@ import numpy as np
 from keras.models import Model
 import keras.backend as K
 from keras.engine.topology import Layer, InputSpec
-from keras.layers import Dense, Input, GaussianNoise, Layer, Activation, Concatenate
+from keras.layers import Dense, Input, GaussianNoise, Layer, Activation, Concatenate, BatchNormalization
 from keras.models import Model
 from keras.optimizers import SGD, Adam
 from keras.utils.vis_utils import plot_model
@@ -54,13 +54,16 @@ def cluster_acc(y_true, y_pred):
     ind = linear_assignment(w.max() - w)
     return sum([w[i, j] for i, j in ind]) * 1.0 / y_pred.size
 
+
 def encoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True, source=None):
     his = h
     for i in range(len(dims) - 2):
-        fc = source.get_layer(name=f'encoder_{i}') if source else Dense(dims[i + 1], kernel_initializer=init, name=f'encoder_{i}')
+        fc = source.get_layer(name=f'encoder_{i}') if source else Dense(dims[i + 1], kernel_initializer=init,
+                                                                        name=f'encoder_{i}')
         h = fc(his)
         if noise_sd > 0:
             h = GaussianNoise(noise_sd, name='noise_%d' % i)(h)  # add Gaussian noise
+        h = BatchNormalization()(h)
         h = Activation(act)(h)
         if dense:
             his = Concatenate(axis=1)([his, h])
@@ -68,7 +71,8 @@ def encoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True
             his = h
     # hidden layer
     # hidden layer, features are extracted from here
-    fc = source.get_layer(name='encoder_hidden') if source else Dense(dims[i + 1], kernel_initializer=init, name='encoder_hidden')
+    fc = source.get_layer(name='encoder_hidden') if source else Dense(dims[i + 1], kernel_initializer=init,
+                                                                      name='encoder_hidden')
     h = fc(his)
     return h
 
@@ -76,8 +80,11 @@ def encoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True
 def decoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True, source=None):
     his = h
     for i in range(len(dims) - 2, 0, -1):
-        fc = source.get_layer(name=f'decoder_{i}') if source else Dense(dims[i], kernel_initializer=init, activation=act, name=f'decoder_{i}')
+        fc = source.get_layer(name=f'decoder_{i}') if source else Dense(dims[i], kernel_initializer=init,
+                                                                        name=f'decoder_{i}')
         h = fc(his)
+        h = BatchNormalization()(h)
+        h = Activation(act)(h)
         if dense:
             his = Concatenate(axis=1)([his, h])
         else:
@@ -421,7 +428,8 @@ if __name__ == "__main__":
     print(args)
 
     # Define scDeepCluster model
-    scDeepCluster = SCDeepCluster(dims=[input_size, 256, 128, 128, 64, 64, 32], n_clusters=args.n_clusters, noise_sd=args.noise_sd)
+    scDeepCluster = SCDeepCluster(dims=[input_size, 256, 128, 128, 64, 64, 32], n_clusters=args.n_clusters,
+                                  noise_sd=args.noise_sd)
     # plot_model(scDeepCluster.model, to_file='scDeepCluster_model.png', show_shapes=True)  # issue with graphviz
     print("autocoder summary")
     scDeepCluster.autoencoder.summary()
