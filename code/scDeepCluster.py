@@ -24,12 +24,12 @@ from preprocess import read_dataset, normalize
 import tensorflow as tf
 
 from numpy.random import seed
-
-seed(2211)
 from tensorflow import set_random_seed
 from os.path import join
 
-set_random_seed(2211)
+# seed(2211)
+# set_random_seed(2211)
+
 
 MeanAct = lambda x: tf.clip_by_value(K.exp(x), 1e-5, 1e6)
 DispAct = lambda x: tf.clip_by_value(tf.nn.softplus(x), 1e-4, 1e4)
@@ -385,8 +385,8 @@ if __name__ == "__main__":
     print(args)
 
     # Define scDeepCluster model
-    scDeepCluster = SCDeepCluster(dims=[input_size, 256, 64, 8], n_clusters=args.n_clusters, noise_sd=args.noise_sd)
-    plot_model(scDeepCluster.model, to_file='scDeepCluster_model.png', show_shapes=True)
+    scDeepCluster = SCDeepCluster(dims=[input_size, 256, 64, 4], n_clusters=args.n_clusters, noise_sd=args.noise_sd)
+    # plot_model(scDeepCluster.model, to_file='scDeepCluster_model.png', show_shapes=True)  # issue with graphviz
     print("autocoder summary")
     scDeepCluster.autoencoder.summary()
     print("model summary")
