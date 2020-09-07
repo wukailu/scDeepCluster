@@ -228,7 +228,6 @@ class SCDeepCluster(object):
         #     elif "dropout" in ae_layers[i].name:
         #         continue
         #     else:
-        #         # TODO: Change to dense FC
         #         hidden = ae_layers[i](hidden)
         #     if "encoder_hidden" in ae_layers[i].name:  # only get encoder layers
         #         break
@@ -422,7 +421,7 @@ if __name__ == "__main__":
     print(args)
 
     # Define scDeepCluster model
-    scDeepCluster = SCDeepCluster(dims=[input_size, 256, 64, 16], n_clusters=args.n_clusters, noise_sd=args.noise_sd)
+    scDeepCluster = SCDeepCluster(dims=[input_size, 256, 128, 64, 32], n_clusters=args.n_clusters, noise_sd=args.noise_sd)
     # plot_model(scDeepCluster.model, to_file='scDeepCluster_model.png', show_shapes=True)  # issue with graphviz
     print("autocoder summary")
     scDeepCluster.autoencoder.summary()
