@@ -7,7 +7,7 @@ import numpy as np
 from keras.models import Model
 import keras.backend as K
 from keras.engine.topology import Layer, InputSpec
-from keras.layers import Dense, Input, GaussianNoise, Layer, Activation
+from keras.layers import Dense, Input, GaussianNoise, Layer, Activation, Concatenate
 from keras.models import Model
 from keras.optimizers import SGD, Adam
 from keras.utils.vis_utils import plot_model
@@ -79,7 +79,7 @@ def autoencoder(dims, noise_sd=0.0, init='glorot_uniform', act='relu'):
     #     h = Dense(dims[i + 1], kernel_initializer=init, name='encoder_%d' % i)(his)
     #     h = GaussianNoise(noise_sd, name='noise_%d' % i)(h)  # add Gaussian noise
     #     h = Activation(act)(h)
-    #     his = K.concatenate([his, h], axis=1)
+    #     his = Concatenate(axis=1)([his, h])
     # # hidden layer
     # # hidden layer, features are extracted from here
     # h = Dense(dims[-1], kernel_initializer=init, name='encoder_hidden')(his)
@@ -88,7 +88,7 @@ def autoencoder(dims, noise_sd=0.0, init='glorot_uniform', act='relu'):
     # his = h
     # for i in range(n_stacks - 1, 0, -1):
     #     h = Dense(dims[i], activation=act, kernel_initializer=init, name='decoder_%d' % i)(his)
-    #     his = K.concatenate([his, h], axis=1)
+    #     his = Concatenate(axis=1)([his, h])
 
     for i in range(n_stacks - 1):
         h = Dense(dims[i + 1], kernel_initializer=init, name='encoder_%d' % i)(h)
@@ -209,6 +209,7 @@ class SCDeepCluster(object):
             elif "dropout" in ae_layers[i].name:
                 continue
             else:
+                # TODO: Change to dense FC
                 hidden = ae_layers[i](hidden)
             if "encoder_hidden" in ae_layers[i].name:  # only get encoder layers
                 break
@@ -401,7 +402,7 @@ if __name__ == "__main__":
     print(args)
 
     # Define scDeepCluster model
-    scDeepCluster = SCDeepCluster(dims=[input_size, 256, 64, 16], n_clusters=args.n_clusters, noise_sd=args.noise_sd)
+    scDeepCluster = SCDeepCluster(dims=[input_size, 256, 64, 32], n_clusters=args.n_clusters, noise_sd=args.noise_sd)
     # plot_model(scDeepCluster.model, to_file='scDeepCluster_model.png', show_shapes=True)  # issue with graphviz
     print("autocoder summary")
     scDeepCluster.autoencoder.summary()
