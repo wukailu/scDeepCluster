@@ -54,6 +54,36 @@ def cluster_acc(y_true, y_pred):
     ind = linear_assignment(w.max() - w)
     return sum([w[i, j] for i, j in ind]) * 1.0 / y_pred.size
 
+def encoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True, source=None):
+    his = h
+    for i in range(len(dims) - 2):
+        fc = source.get_layer(name=f'encoder_{i}') if source else Dense(dims[i + 1], kernel_initializer=init, name=f'encoder_{i}')
+        h = fc(his)
+        if noise_sd > 0:
+            h = GaussianNoise(noise_sd, name='noise_%d' % i)(h)  # add Gaussian noise
+        h = Activation(act)(h)
+        if dense:
+            his = Concatenate(axis=1)([his, h])
+        else:
+            his = h
+    # hidden layer
+    # hidden layer, features are extracted from here
+    fc = source.get_layer(name='encoder_hidden') if source else Dense(dims[i + 1], kernel_initializer=init, name='encoder_hidden')
+    h = fc(his)
+    return h
+
+
+def decoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True, source=None):
+    his = h
+    for i in range(len(dims) - 2, 0, -1):
+        fc = source.get_layer(name=f'decoder_{i}') if source else Dense(dims[i], kernel_initializer=init, activation=act, name=f'decoder_{i}')
+        h = fc(his)
+        if dense:
+            his = Concatenate(axis=1)([his, h])
+        else:
+            his = h
+    return h
+
 
 def autoencoder(dims, noise_sd=0.0, init='glorot_uniform', act='relu'):
     """
@@ -74,33 +104,22 @@ def autoencoder(dims, noise_sd=0.0, init='glorot_uniform', act='relu'):
 
     # internal layers in encoder
     # TODO: Change to dense fc layer
-    # his = h
-    # for i in range(n_stacks - 1):
-    #     h = Dense(dims[i + 1], kernel_initializer=init, name='encoder_%d' % i)(his)
-    #     h = GaussianNoise(noise_sd, name='noise_%d' % i)(h)  # add Gaussian noise
-    #     h = Activation(act)(h)
-    #     his = Concatenate(axis=1)([his, h])
-    # # hidden layer
-    # # hidden layer, features are extracted from here
-    # h = Dense(dims[-1], kernel_initializer=init, name='encoder_hidden')(his)
-    #
-    # # internal layers in decoder
-    # his = h
-    # for i in range(n_stacks - 1, 0, -1):
-    #     h = Dense(dims[i], activation=act, kernel_initializer=init, name='decoder_%d' % i)(his)
-    #     his = Concatenate(axis=1)([his, h])
-
-    for i in range(n_stacks - 1):
-        h = Dense(dims[i + 1], kernel_initializer=init, name='encoder_%d' % i)(h)
-        h = GaussianNoise(noise_sd, name='noise_%d' % i)(h)  # add Gaussian noise
-        h = Activation(act)(h)
-    # hidden layer
-    h = Dense(dims[-1], kernel_initializer=init, name='encoder_hidden')(
-        h)  # hidden layer, features are extracted from here
+    h = encoder(h, dims, noise_sd, init, act)
 
     # internal layers in decoder
-    for i in range(n_stacks - 1, 0, -1):
-        h = Dense(dims[i], activation=act, kernel_initializer=init, name='decoder_%d' % i)(h)
+    h = decoder(h, dims, noise_sd, init, act)
+
+    # for i in range(n_stacks - 1):
+    #     h = Dense(dims[i + 1], kernel_initializer=init, name='encoder_%d' % i)(h)
+    #     h = GaussianNoise(noise_sd, name='noise_%d' % i)(h)  # add Gaussian noise
+    #     h = Activation(act)(h)
+    # # hidden layer
+    # h = Dense(dims[-1], kernel_initializer=init, name='encoder_hidden')(
+    #     h)  # hidden layer, features are extracted from here
+    #
+    # # internal layers in decoder
+    # for i in range(n_stacks - 1, 0, -1):
+    #     h = Dense(dims[i], activation=act, kernel_initializer=init, name='decoder_%d' % i)(h)
 
     # output
 
@@ -201,18 +220,19 @@ class SCDeepCluster(object):
         self.autoencoder = autoencoder(self.dims, noise_sd=self.noise_sd, act=self.act)
 
         # prepare clean encode model without Gaussian noise
-        ae_layers = [l for l in self.autoencoder.layers]
         hidden = self.autoencoder.input[0]
-        for i in range(1, len(ae_layers)):
-            if "noise" in ae_layers[i].name:
-                continue
-            elif "dropout" in ae_layers[i].name:
-                continue
-            else:
-                # TODO: Change to dense FC
-                hidden = ae_layers[i](hidden)
-            if "encoder_hidden" in ae_layers[i].name:  # only get encoder layers
-                break
+        # ae_layers = [l for l in self.autoencoder.layers]
+        # for i in range(1, len(ae_layers)):
+        #     if "noise" in ae_layers[i].name:
+        #         continue
+        #     elif "dropout" in ae_layers[i].name:
+        #         continue
+        #     else:
+        #         # TODO: Change to dense FC
+        #         hidden = ae_layers[i](hidden)
+        #     if "encoder_hidden" in ae_layers[i].name:  # only get encoder layers
+        #         break
+        hidden = encoder(hidden, dims, noise_sd=0, act=self.act, source=self.autoencoder)
         self.encoder = Model(inputs=self.autoencoder.input, outputs=hidden)
 
         pi = self.autoencoder.get_layer(name='pi').output
@@ -402,7 +422,7 @@ if __name__ == "__main__":
     print(args)
 
     # Define scDeepCluster model
-    scDeepCluster = SCDeepCluster(dims=[input_size, 256, 64, 32], n_clusters=args.n_clusters, noise_sd=args.noise_sd)
+    scDeepCluster = SCDeepCluster(dims=[input_size, 256, 64, 16], n_clusters=args.n_clusters, noise_sd=args.noise_sd)
     # plot_model(scDeepCluster.model, to_file='scDeepCluster_model.png', show_shapes=True)  # issue with graphviz
     print("autocoder summary")
     scDeepCluster.autoencoder.summary()
