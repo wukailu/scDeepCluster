@@ -78,7 +78,7 @@ def encoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=Fals
     return h
 
 
-def decoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True, source=None):
+def decoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=False, source=None):
     his = h
     for i in range(len(dims) - 2, 0, -1):
         fc = source.get_layer(name=f'decoder_{i}') if source else Dense(dims[i], kernel_initializer=init,
