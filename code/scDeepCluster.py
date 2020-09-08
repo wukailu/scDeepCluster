@@ -430,7 +430,7 @@ if __name__ == "__main__":
     print(args)
 
     # Define scDeepCluster model
-    scDeepCluster = SCDeepCluster(dims=[input_size, 256, 128, 64], n_clusters=args.n_clusters,
+    scDeepCluster = SCDeepCluster(dims=[input_size, 512, 256, 128, 64], n_clusters=args.n_clusters,
                                   noise_sd=args.noise_sd)
     # plot_model(scDeepCluster.model, to_file='scDeepCluster_model.png', show_shapes=True)  # issue with graphviz
     print("autocoder summary")
