@@ -55,7 +55,7 @@ def cluster_acc(y_true, y_pred):
     return sum([w[i, j] for i, j in ind]) * 1.0 / y_pred.size
 
 
-def encoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True, source=None):
+def encoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=False, source=None):
     his = h
     for i in range(len(dims) - 2):
         fc = source.get_layer(name=f'encoder_{i}') if source else Dense(dims[i + 1], kernel_initializer=init,
@@ -78,7 +78,7 @@ def encoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True
     return h
 
 
-def decoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=False, source=None):
+def decoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True, source=None):
     his = h
     for i in range(len(dims) - 2, 0, -1):
         fc = source.get_layer(name=f'decoder_{i}') if source else Dense(dims[i], kernel_initializer=init,
