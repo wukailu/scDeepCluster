@@ -78,7 +78,7 @@ def encoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True
     return h
 
 
-def decoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True, source=None):
+def decoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=False, source=None):
     his = h
     for i in range(len(dims) - 2, 0, -1):
         fc = source.get_layer(name=f'decoder_{i}') if source else Dense(dims[i], kernel_initializer=init,
@@ -430,8 +430,7 @@ if __name__ == "__main__":
     print(args)
 
     # Define scDeepCluster model
-    scDeepCluster = SCDeepCluster(dims=[input_size, 256, 128, 128, 64, 64, 32], n_clusters=args.n_clusters,
-                                  noise_sd=args.noise_sd)
+    scDeepCluster = SCDeepCluster(dims=[input_size, 256, 64, 32], n_clusters=args.n_clusters, noise_sd=args.noise_sd)
     # plot_model(scDeepCluster.model, to_file='scDeepCluster_model.png', show_shapes=True)  # issue with graphviz
     print("autocoder summary")
     scDeepCluster.autoencoder.summary()
