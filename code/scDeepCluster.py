@@ -396,7 +396,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # load dataset
-    optimizer1 = Adam(amsgrad=True, lr=0.001)
+    optimizer1 = Adam(amsgrad=True, lr=0.0001)
     optimizer2 = 'adadelta'
 
     data_mat = h5py.File(args.data_file)
