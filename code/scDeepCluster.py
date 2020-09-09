@@ -395,9 +395,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    seed = args.seed
-    seed(seed)
-    set_random_seed(seed)
+    my_seed = args.seed
+    seed(my_seed)
+    set_random_seed(my_seed)
 
     # load dataset
     optimizer1 = Adam(amsgrad=True, lr=args.lr)
