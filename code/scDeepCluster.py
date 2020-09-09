@@ -28,8 +28,8 @@ from numpy.random import seed
 from tensorflow import set_random_seed
 from os.path import join
 
-seed(2211)
-set_random_seed(2211)
+# seed(2211)
+# set_random_seed(2211)
 
 
 MeanAct = lambda x: tf.clip_by_value(K.exp(x), 1e-5, 1e6)
