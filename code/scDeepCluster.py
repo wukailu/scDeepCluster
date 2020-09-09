@@ -28,9 +28,6 @@ from numpy.random import seed
 from tensorflow import set_random_seed
 from os.path import join
 
-# seed(2211)
-# set_random_seed(2211)
-
 
 MeanAct = lambda x: tf.clip_by_value(K.exp(x), 1e-5, 1e6)
 DispAct = lambda x: tf.clip_by_value(tf.nn.softplus(x), 1e-4, 1e4)
@@ -392,11 +389,17 @@ if __name__ == "__main__":
     parser.add_argument('--save_dir', default=join('results', 'scDeepCluster'))
     parser.add_argument('--ae_weight_file', default='ae_weights.h5')
     parser.add_argument('--noise_sd', default=2.5, type=float)
+    parser.add_argument('--lr', default=1e-3, type=float)
+    parser.add_argument('--seed', default=0, type=int)
 
     args = parser.parse_args()
 
+    seed = args.seed
+    seed(seed)
+    set_random_seed(seed)
+
     # load dataset
-    optimizer1 = Adam(amsgrad=True, lr=0.0005)
+    optimizer1 = Adam(amsgrad=True, lr=args.lr)
     optimizer2 = 'adadelta'
 
     data_mat = h5py.File(args.data_file)
