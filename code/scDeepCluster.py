@@ -32,6 +32,7 @@ from os.path import join
 MeanAct = lambda x: tf.clip_by_value(K.exp(x), 1e-5, 1e6)
 DispAct = lambda x: tf.clip_by_value(tf.nn.softplus(x), 1e-4, 1e4)
 
+args = None
 
 def cluster_acc(y_true, y_pred):
     """
@@ -53,7 +54,7 @@ def cluster_acc(y_true, y_pred):
     return sum([w[i, j] for i, j in ind]) * 1.0 / y_pred.size
 
 
-def encoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True, source=None):
+def encoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=args.dense, source=None):
     his = h
     for i in range(len(dims) - 2):
         fc = source.get_layer(name=f'encoder_{i}') if source else Dense(dims[i + 1], kernel_initializer=init,
@@ -61,8 +62,9 @@ def encoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True
         h = fc(his)
         if noise_sd > 0:
             h = GaussianNoise(noise_sd, name='noise_%d' % i)(h)  # add Gaussian noise
-        bn = source.get_layer(name=f'en_bn_{i}') if source else BatchNormalization(name=f'en_bn_{i}')
-        h = bn(h)
+        if args.bn:
+            bn = source.get_layer(name=f'en_bn_{i}') if source else BatchNormalization(name=f'en_bn_{i}')
+            h = bn(h)
         h = Activation(act)(h)
         if dense:
             his = Concatenate(axis=1)([his, h])
@@ -76,14 +78,15 @@ def encoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True
     return h
 
 
-def decoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True, source=None):
+def decoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=args.dense, source=None):
     his = h
     for i in range(len(dims) - 2, 0, -1):
         fc = source.get_layer(name=f'decoder_{i}') if source else Dense(dims[i], kernel_initializer=init,
                                                                         name=f'decoder_{i}')
         h = fc(his)
-        bn = source.get_layer(name=f'de_bn_{i}') if source else BatchNormalization(name=f'de_bn_{i}')
-        h = bn(h)
+        if args.bn:
+            bn = source.get_layer(name=f'de_bn_{i}') if source else BatchNormalization(name=f'de_bn_{i}')
+            h = bn(h)
         h = Activation(act)(h)
         if dense:
             his = Concatenate(axis=1)([his, h])
@@ -392,6 +395,8 @@ if __name__ == "__main__":
     parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('--seed', default=0, type=int)
     parser.add_argument('--structure', default="256,64,32", type=str)
+    parser.add_argument('--bn', default=False, type=bool)
+    parser.add_argument('--dense', default=False, type=bool)
 
     args = parser.parse_args()
 
