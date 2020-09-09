@@ -391,6 +391,7 @@ if __name__ == "__main__":
     parser.add_argument('--noise_sd', default=2.5, type=float)
     parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('--seed', default=0, type=int)
+    parser.add_argument('--structure', default="256,64,32", type=str)
 
     args = parser.parse_args()
 
@@ -434,6 +435,7 @@ if __name__ == "__main__":
     print(args)
 
     # Define scDeepCluster model
+    dims = [input_size] + [int(x) for x in args.structure.split(",")]
     scDeepCluster = SCDeepCluster(dims=[input_size, 512, 256, 128, 64, 32], n_clusters=args.n_clusters, noise_sd=args.noise_sd)
     # plot_model(scDeepCluster.model, to_file='scDeepCluster_model.png', show_shapes=True)  # issue with graphviz
     print("autocoder summary")
