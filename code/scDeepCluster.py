@@ -10,6 +10,7 @@ from keras.engine.topology import Layer, InputSpec
 from keras.layers import Dense, Input, GaussianNoise, Layer, Activation, Concatenate, BatchNormalization
 from keras.models import Model
 from keras.optimizers import SGD, Adam
+from keras.callbacks import LearningRateScheduler
 from keras.utils.vis_utils import plot_model
 from keras.callbacks import EarlyStopping
 
@@ -55,7 +56,7 @@ def cluster_acc(y_true, y_pred):
     return sum([w[i, j] for i, j in ind]) * 1.0 / y_pred.size
 
 
-def encoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=False, source=None):
+def encoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True, source=None):
     his = h
     for i in range(len(dims) - 2):
         fc = source.get_layer(name=f'encoder_{i}') if source else Dense(dims[i + 1], kernel_initializer=init,
@@ -78,7 +79,7 @@ def encoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=Fals
     return h
 
 
-def decoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=False, source=None):
+def decoder(h, dims, noise_sd=0.0, init='glorot_uniform', act='relu', dense=True, source=None):
     his = h
     for i in range(len(dims) - 2, 0, -1):
         fc = source.get_layer(name=f'decoder_{i}') if source else Dense(dims[i], kernel_initializer=init,
@@ -395,7 +396,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # load dataset
-    optimizer1 = Adam(amsgrad=True)
+    optimizer1 = Adam(amsgrad=True, lr=0.001)
     optimizer2 = 'adadelta'
 
     data_mat = h5py.File(args.data_file)
